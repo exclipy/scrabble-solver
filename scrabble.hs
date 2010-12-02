@@ -47,15 +47,33 @@ latinify = map latinifyChar
 isAlphabetic = all (\x -> ord x >= ord 'a' && ord x <= ord 'z')
 
 findAnagrams :: String -> [String] -> [String]
-findAnagrams tiles words = filter (isAnagram tiles) words
+findAnagrams tiles words = let letterBag = sort tiles
+                               (dots, letters) = span (== '.') letterBag
+                               ndots = length dots
+                               raw = filter (isAnagram ndots letters) words
+                               in map (processDots letters) raw
 
-isAnagram :: String -> String -> Bool
-isAnagram tiles word =
-    let letterBag = sort tiles
-        (dots, letters) = span (== '.') letterBag
-        in isSubSequenceOf (length dots) (sort word) (sort letters)
+-- sorted_letters -> word -> word_with_wildcards_capitalized
+processDots :: String -> String -> String
+processDots tiles (w:word) = let (found, removed) = removeOne w tiles
+                                 rest = processDots removed word
+                                 in if found
+                                       then w:rest
+                                       else (toUpper w):rest
+processDots _ [] = []
 
--- num_wildcards -> sub_sequence_candidate -> sequence
+removeOne :: Char -> String -> (Bool, String)
+removeOne c (x:xs) | c == x    = (True, xs)
+                   | otherwise = let (found, removed) = removeOne c xs
+                                 in (found, x:removed)
+removeOne c [] = (False, [])
+
+-- num_wildcards -> sorted_letters -> word -> is_anagram
+isAnagram :: Int -> String -> String -> Bool
+isAnagram ndots letters word =
+    isSubSequenceOf ndots (sort word) letters
+
+-- num_wildcards -> sub_sequence_candidate -> sequence -> is_subsequence
 isSubSequenceOf :: Int -> String -> String -> Bool
 isSubSequenceOf _ [] _ = True
 isSubSequenceOf 0 (x:xs) [] = False
